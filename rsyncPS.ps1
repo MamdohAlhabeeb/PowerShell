@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     This script uses PowerShell to synchronize files between two directories, similar to rsync functionality in Unix-based systems.
-    It logs each file synchronization to a README file with the date and time.
+    lIt ogs each file synchronization to a README file with the date and time.
 
 .PARAMETER source
     The source directory path.
