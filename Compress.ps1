@@ -8,6 +8,9 @@ This script compresses all files in the specified directory and its subdirectori
 .PARAMETER Directory
 Specifies the directory to search for files to compress.
 
+.PARAMETER DestinationDirectory
+Specifies the directory where the compressed files should be saved. If not specified, the compressed files will be saved in the same directory as the original files.
+
 .PARAMETER Days
 Specifies the number of days for which files should be compressed.
 
@@ -27,6 +30,9 @@ Compress-Files -Directory "C:\MyDirectory" -Days 7 -Recurse -Verbose
 # Compress files in the specified directory only (no subdirectories)
 Compress-Files -Directory "C:\MyDirectory" -Days 7 -Verbose
 
+# Compress files and save the compressed files to a different directory
+Compress-Files -Directory "C:\MyDirectory" -Days 7 -DestinationDirectory "C:\CompressedFiles" -Verbose
+
 .NOTES
 This script requires PowerShell version 5.0 or later.
 
@@ -40,6 +46,9 @@ function Compress-Files {
         [Parameter(Mandatory=$true)]
         [ValidateScript({Test-Path $_ -PathType 'Container'})]
         [string]$Directory,
+
+        [Parameter(Mandatory=$false)]
+        [string]$DestinationDirectory,
 
         [Parameter(Mandatory=$true)]
         [ValidateRange(1, [int]::MaxValue)]
@@ -58,9 +67,21 @@ function Compress-Files {
 
     $filesToCompress = Get-ChildItem @childItemParams | Where-Object {$_.Extension -ne ".zip" -and $_.LastWriteTime -lt (Get-Date).AddDays(-$Days)}
 
+    # Create the destination directory if it doesn't exist
+    if ($DestinationDirectory -and -not (Test-Path -Path $DestinationDirectory)) {
+        try {
+            New-Item -Path $DestinationDirectory -ItemType Directory | Out-Null
+            Write-Verbose "Created destination directory $DestinationDirectory"
+        } catch {
+            Write-Error "Failed to create destination directory $DestinationDirectory. Error: $_"
+            return
+        }
+    }
+
     # Compress each file using the zip format
     foreach ($file in $filesToCompress) {
-        $zipPath = Join-Path -Path $file.DirectoryName -ChildPath ($file.BaseName + ".zip")
+        $destinationPath = if ($DestinationDirectory) { $DestinationDirectory } else { $file.DirectoryName }
+        $zipPath = Join-Path -Path $destinationPath -ChildPath ($file.BaseName + ".zip")
         try {
             Compress-Archive -Path $file.FullName -DestinationPath $zipPath -Force
             Write-Verbose "Compressed $($file.FullName) to $($zipPath)"
@@ -69,7 +90,7 @@ function Compress-Files {
                 Write-Verbose "Removed original file $($file.FullName)"
             }
         } catch {
-            Write-Error "Failed to com-press $($file.FullName). Error: $_"
+            Write-Error "Failed to compress $($file.FullName). Error: $_"
         }
     }
 }
@@ -78,4 +99,4 @@ function Compress-Files {
 $VerbosePreference = 'Continue'
 
 # Call the Compress-Files function with the specified parameters
-Compress-Files -Directory "/Users/Downloads" -Days 180 -RemoveOriginal
+Compress-Files -Directory "/Users/gwmsist/Downloads/care" -Days 180 -RemoveOriginal -DestinationDirectory "/Users/gwmsist/Downloads/care/CompressedFiles"
