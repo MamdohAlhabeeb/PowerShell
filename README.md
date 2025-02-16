@@ -17,7 +17,7 @@ Collection of PowerShell scripts for various automation tasks.
 2. **Compress.ps1:** This script compresses files in a specified directory and its subdirectories that are older than a specified number of days. The compressed files are saved in the same directory with the same name as the original file, but with a .zip extension. It includes options to remove the original files after compression and to include subdirectories in the compression process. This script requires PowerShell version 5.0 or later.
 
 ### Parameters for Compress.ps1
-______________________________________________________________________________________________________________________________
+------------------------------------------------------------------------------------------------------------------------------
 | Parameter              | Description                                                                            | Required |
 |------------------------|---------------------------------------------------------------------------------------------------|
 | `Directory`            | Specifies the directory to search for files to compress.                               | Yes      |
