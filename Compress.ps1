@@ -98,5 +98,5 @@ function Compress-Files {
 # Uncomment the following line to enable verbose output
 $VerbosePreference = 'Continue'
 
-# Call the Compress-Files function with the specified parameters
-Compress-Files -Directory "/Users/gwmsist/Downloads/care" -Days 180 -RemoveOriginal -DestinationDirectory "/Users/gwmsist/Downloads/care/CompressedFiles"
+# Call the Compress-Files function with the specified parameters.
+Compress-Files -Directory "C:\Path\To\Directory" -Days 180 -RemoveOriginal -DestinationDirectory "C:\Path\To\CompressedFiles"
