@@ -36,62 +36,55 @@ param (
     [int]$syncMode = 1,
 
     [Parameter(Mandatory=$false)]
-    [switch]$debug1
+    [switch]$debug1 = $false,
+
+    [Parameter(Mandatory=$false)]
+    [switch]$log = $false
 )
 
-function rsync ($source,$target, $syncMode = 1, $debug = $false)
- {
-  
+function rsync ($source, $target, $syncMode , $debug = $false, $log = $false) {
     azcopy login --identity
-  # Create the destination folder if it does not exist
+    # Create the destination folder if it does not exist
     if (-not (Test-Path -Path $target)) {
         try {
             New-Item -Path $target -ItemType Directory | Out-Null
-            
         } catch {
             Write-Output "Error creating the folder '$target'. Error: $_"
             exit 1
         }
-    } 
-
-    #Path to Logfile
-    $readmeFilePath = Join-Path -Path $target -ChildPath "logfile.txt"
-
-    # Create README file with the date and time of folder creation
-    if (-not (Test-Path -Path $readmeFilePath)) {
-    
-    $currentDateTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $readmeContent = "This folder was created on $currentDateTime"
-    Set-Content -Path $readmeFilePath -Value $readmeContent
     }
 
-  $sourceFiles = Get-ChildItem -Path $source -Recurse
-  $targetFiles = Get-ChildItem -Path $target -Recurse
+    # Path to Logfile
+    $logFilePath = Join-Path -Path $target -ChildPath "logfile.txt"
 
-  if ($debug -eq $true) {
-    Write-Output "Source=$source, Target=$target"
-    Write-Output "sourcefiles = $sourceFiles"
-    Write-Output "TargetFiles = $targetFiles"
-  }
-    
- 
-  if ($sourceFiles -eq $null -and $targetFiles -eq $null) {
-    Write-Host "Empty Directory encountered. Skipping file Copy."
-  } else {
-  
-    $diff = Compare-Object -ReferenceObject $sourceFiles -DifferenceObject $targetFiles
+    # Create README file with the date and time of folder creation
+    if (-not (Test-Path -Path $logFilePath)) {
+        $currentDateTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $readmeContent = "This folder was created on $currentDateTime"
+        Set-Content -Path $logFilePath -Value $readmeContent
+    }
 
-    foreach ($f in $diff) {
-      if ($f.SideIndicator -eq "<=") {
-        $fullSourceObject = $f.InputObject.FullName
-        #$fullTargetObject = $f.InputObject.FullName.Replace($source,$target)
-        $relativePath = $fullSourceObject.Substring($source.Length)
-        $fullTargetObject = Join-Path -Path $target -ChildPath $relativePath
-        #write-host "Directory '$target'" -ForegroundColor Yellow  
+    $sourceFiles = Get-ChildItem -Path $source -Recurse
+    $targetFiles = Get-ChildItem -Path $target -Recurse
 
-       
-         # Ensure the source and target are not the same
+    if ($debug -eq $true) {
+        Write-Output "Source=$source, Target=$target"
+        Write-Output "sourcefiles = $sourceFiles"
+        Write-Output "TargetFiles = $targetFiles"
+    }
 
+    if ($sourceFiles -eq $null -and $targetFiles -eq $null) {
+        Write-Host "Empty Directory encountered. Skipping file Copy."
+    } else {
+        $diff = Compare-Object -ReferenceObject $sourceFiles -DifferenceObject $targetFiles
+
+        foreach ($f in $diff) {
+            if ($f.SideIndicator -eq "<=") {
+                $fullSourceObject = $f.InputObject.FullName
+                $relativePath = $fullSourceObject.Substring($source.Length)
+                $fullTargetObject = Join-Path -Path $target -ChildPath $relativePath
+
+                # Ensure the source and target are not the same
                 if ($fullSourceObject -ne $fullTargetObject) {
                     # Check if the target file exists and if the source file is newer
                     if (-not (Test-Path -Path $fullTargetObject) -or (Get-Item $fullSourceObject).LastWriteTime -gt (Get-Item $fullTargetObject).LastWriteTime) {
@@ -105,34 +98,30 @@ function rsync ($source,$target, $syncMode = 1, $debug = $false)
                                 continue
                             }
                         }
-                     
-                              
-                    $currentDateTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss" 
-                    Write-Host "Attempt to copy the following:  $fullSourceObject " -NoNewline;write-host "$currentDateTime" -ForegroundColor Yellow 
-                   #Write-Host "Attempt to copy the following: " $fullSourceObject
-                    Copy-Item -Path $fullSourceObject -Destination $fullTargetObject -Force
 
-                   
-                    # Log file sync details in README file                    
-                    $logContent = "Copied $fullSourceObject to $fullTargetObject at $currentDateTime`n"
-                   # Add-Content -Path $readmeFilePath -Value $logContent
-                  }
+                        $currentDateTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+                        Write-Host "Attempt to copy the following:  $fullSourceObject " -NoNewline; write-host "$currentDateTime" -ForegroundColor Yellow
+                        Copy-Item -Path $fullSourceObject -Destination $fullTargetObject -Force
+
+                        if ($log -eq $true) {
+                            # Log file sync details in README file
+                            $logContent = "Copied $fullSourceObject to $fullTargetObject at $currentDateTime`n"
+                            Add-Content -Path $logFilePath -Value $logContent
+                        }
+                    }
                 }
             }
 
-      if ($f.SideIndicator -eq "=>" -and $syncMode -eq 2) {
-        $fullSourceObject = $f.InputObject.FullName
-        #$fullTargetObject = $f.InputObject.FullName.Replace($target,$source)
-        $relativePath = $fullSourceObject.Substring($source.Length)
-        $fullTargetObject = Join-Path -Path $target -ChildPath $relativePath
-        #write-host "Directory '$target'" -ForegroundColor Yellow 
+            if ($f.SideIndicator -eq "=>" -and $syncMode -eq 2) {
+                $fullSourceObject = $f.InputObject.FullName
+                $relativePath = $fullSourceObject.Substring($source.Length)
+                $fullTargetObject = Join-Path -Path $target -ChildPath $relativePath
 
                 # Ensure the source and target are not the same
                 if ($fullSourceObject -ne $fullTargetObject) {
                     # Check if the target file exists and if the source file is newer
                     if (-not (Test-Path -Path $fullTargetObject) -or (Get-Item $fullSourceObject).LastWriteTime -gt (Get-Item $fullTargetObject).LastWriteTime) {
-                        
-                         # Create subdirectory if it does not exist
+                        # Create subdirectory if it does not exist
                         $sourceDir = Split-Path $fullTargetObject -Parent
                         if (-not (Test-Path -Path $sourceDir)) {
                             try {
@@ -141,24 +130,23 @@ function rsync ($source,$target, $syncMode = 1, $debug = $false)
                                 Write-Output "Error creating the folder '$sourceDir'. Error: $_"
                                 continue
                             }
-                         }   
-                
-                        $currentDateTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss" 
-                        Write-Host "Attempt to copy the following:  $fullSourceObject " -NoNewline;write-host "$currentDateTime" -ForegroundColor Yellow 
-       
-                        Copy-Item -Path $fullSourceObject -Destination $fullTargetObject -force
-                       
-                         # Log file sync details in README file
+                        }
+
                         $currentDateTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-                        $logContent = "Copied $fullSourceObject to $fullTargetObject at $currentDateTime`n"
-                        #Add-Content -Path $readmeFilePath -Value $logContent
+                        Write-Host "Attempt to copy the following:  $fullSourceObject " -NoNewline; write-host "$currentDateTime" -ForegroundColor Yellow
+                        Copy-Item -Path $fullSourceObject -Destination $fullTargetObject -Force
+
+                        if ($log -eq $true) {
+                            # Log file sync details in README file
+                            $logContent = "Copied $fullSourceObject to $fullTargetObject at $currentDateTime`n"
+                            Add-Content -Path $logFilePath -Value $logContent
                         }
                     }
                 }
             }
         }
+    }
 }
 
-
-rsync -source $source -target $target -syncMode $syncMode -debug:$debug1
+rsync -source $source -target $target -syncMode $syncMode -debug:$debug1 -log:$log
 
